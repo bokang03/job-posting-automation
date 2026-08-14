@@ -54,6 +54,40 @@ def test_any_keyword_matches_tech_stack_even_if_title_lacks_it():
     assert matches_profile(p, profile(keywords=KeywordSpec(any=("Spring",), all=(), none=())))
 
 
+def test_java_does_not_match_javascript_in_tech_stack():
+    """영어 기술명은 단어 단위로 봐야 한다. 이걸 놓치면 JavaScript 공고가 Java 공고로 잡힌다."""
+    p = posting(title="Vision Field Application Engineer", category="",
+                tech_stacks=("C++", "JavaScript", "Qt", "OpenCV"))
+    assert not matches_profile(p, profile(keywords=KeywordSpec(any=("Java",), all=(), none=())))
+
+
+def test_java_matches_an_exact_java_tech_stack_entry():
+    p = posting(title="서버 개발자", category="", tech_stacks=("Java", "Spring"))
+    assert matches_profile(p, profile(keywords=KeywordSpec(any=("Java",), all=(), none=())))
+
+
+def test_java_matches_when_the_title_says_java():
+    p = posting(title="JAVA 주니어 경력 개발부문 채용", category="", tech_stacks=())
+    assert matches_profile(p, profile(keywords=KeywordSpec(any=("Java",), all=(), none=())))
+
+
+def test_partial_word_prefix_still_matches_a_longer_tech_name():
+    """'Spring' 으로 'Spring Boot' 는 잡혀야 한다. 공백이 단어 경계이기 때문이다."""
+    p = posting(title="서버 개발자", category="", tech_stacks=("Spring Boot",))
+    assert matches_profile(p, profile(keywords=KeywordSpec(any=("Spring",), all=(), none=())))
+
+
+def test_korean_keyword_still_matches_inside_a_compound_word():
+    """한국어는 띄어쓰기가 없어도 매칭돼야 한다."""
+    p = posting(title="백엔드개발자 채용", category="", tech_stacks=())
+    assert matches_profile(p, profile(keywords=KeywordSpec(any=("백엔드",), all=(), none=())))
+
+
+def test_none_keyword_also_respects_word_boundaries():
+    p = posting(title="백엔드 개발자", category="", tech_stacks=("JavaScript",))
+    assert matches_profile(p, profile(keywords=KeywordSpec(any=("백엔드",), all=(), none=("Java",))))
+
+
 def test_keyword_matching_is_case_insensitive():
     p = posting(title="Backend Engineer", category="", tech_stacks=())
     assert matches_profile(p, profile(keywords=KeywordSpec(any=("backend",), all=(), none=())))
@@ -100,10 +134,38 @@ def test_any_keyword_still_matches_against_broad_category():
 
 
 def test_all_keywords_must_be_present():
-    spec = KeywordSpec(any=(), all=("백엔드", "Spring"), none=())
+    spec = KeywordSpec(any=(), all=(("백엔드",), ("Spring",)), none=())
     assert matches_profile(posting(title="백엔드 개발자", tech_stacks=("Spring",)), profile(keywords=spec))
     assert not matches_profile(
         posting(title="백엔드 개발자", tech_stacks=("Django",), category=""), profile(keywords=spec)
+    )
+
+
+def test_all_group_passes_when_any_member_of_the_group_is_present():
+    """'Java 또는 Kotlin 중 하나는 반드시' 를 표현한다."""
+    spec = KeywordSpec(any=(), all=(("Java", "Kotlin"),), none=())
+    assert matches_profile(posting(title="서버 개발자", tech_stacks=("Kotlin",)), profile(keywords=spec))
+    assert matches_profile(posting(title="서버 개발자", tech_stacks=("Java",)), profile(keywords=spec))
+
+
+def test_all_group_rejects_when_no_member_of_the_group_is_present():
+    spec = KeywordSpec(any=(), all=(("Java", "Kotlin"),), none=())
+    assert not matches_profile(
+        posting(title="서버 개발자", category="", tech_stacks=("Python", "Django")), profile(keywords=spec)
+    )
+
+
+def test_every_all_group_must_be_satisfied():
+    """직무 조건 AND 언어 조건 — 둘 다 만족해야 통과."""
+    spec = KeywordSpec(any=(), all=(("백엔드", "서버"), ("Java", "Kotlin")), none=())
+    assert matches_profile(posting(title="백엔드 개발자", tech_stacks=("Java",)), profile(keywords=spec))
+    # 언어는 맞지만 직무가 아님
+    assert not matches_profile(
+        posting(title="안드로이드 개발자", category="", tech_stacks=("Kotlin",)), profile(keywords=spec)
+    )
+    # 직무는 맞지만 언어가 아님
+    assert not matches_profile(
+        posting(title="백엔드 개발자", category="", tech_stacks=("Python",)), profile(keywords=spec)
     )
 
 

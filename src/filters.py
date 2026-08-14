@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import re
+from functools import lru_cache
+
 from .config import CareerSpec, KeywordSpec, Profile
 from .models import JobPosting
 
@@ -9,18 +12,35 @@ from .models import JobPosting
 _NO_UPPER_BOUND = 99
 
 
+@lru_cache(maxsize=512)
+def _pattern(word: str) -> re.Pattern:
+    """키워드를 '영문·숫자 경계' 규칙으로 찾는 정규식.
+
+    앞뒤가 영문자나 숫자면 매칭하지 않는다. 이 규칙 하나로 두 가지가 동시에 해결된다.
+      - 'Java' 가 'JavaScript' 에 걸리지 않는다 (뒤에 s 가 붙어 있으므로)
+      - 'Spring' 은 'Spring Boot' 에 걸린다 (뒤가 공백이므로)
+      - '백엔드' 는 '백엔드개발자' 에 걸린다 (한글은 영문·숫자가 아니므로)
+    """
+    return re.compile(rf"(?<![a-z0-9]){re.escape(word.lower())}(?![a-z0-9])")
+
+
+def _contains(haystack: str, word: str) -> bool:
+    return _pattern(word).search(haystack) is not None
+
+
 def _keywords_match(posting: JobPosting, spec: KeywordSpec) -> bool:
     exclusion = posting.exclusion_haystack()
     for word in spec.none:
-        if word.lower() in exclusion:
+        if _contains(exclusion, word):
             return False
 
     haystack = posting.haystack()
-    for word in spec.all:
-        if word.lower() not in haystack:
+    # 그룹끼리는 AND, 그룹 안에서는 OR
+    for group in spec.all:
+        if not any(_contains(haystack, word) for word in group):
             return False
 
-    if spec.any and not any(word.lower() in haystack for word in spec.any):
+    if spec.any and not any(_contains(haystack, word) for word in spec.any):
         return False
 
     return True

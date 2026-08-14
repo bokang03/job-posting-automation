@@ -25,6 +25,22 @@ POSITION_URL = "https://www.wanted.co.kr/wd/{id}"
 PAGE_SIZE = 100
 
 
+# 원티드는 고용형태를 코드로 준다. 다른 세 사이트에는 없는 정보라 태그로 노출해
+# none 키워드("인턴", "계약직")로 걸러낼 수 있게 한다.
+EMPLOYMENT_TYPES = {
+    "regular": "정규직",
+    "intern": "인턴",
+    "contract": "계약직",
+    "freelance": "프리랜서",
+    "parttime": "아르바이트",
+}
+
+
+def _tags(raw: dict) -> tuple[str, ...]:
+    label = EMPLOYMENT_TYPES.get(str(raw.get("employment_type") or "").lower())
+    return (label,) if label else ()
+
+
 def _location(raw: dict) -> str:
     addr = raw.get("address") or {}
     parts = [addr.get("location"), addr.get("district")]
@@ -48,6 +64,7 @@ def parse_page(data: dict) -> list[JobPosting]:
                 url=POSITION_URL.format(id=job_id),
                 tech_stacks=(),
                 category="",
+                tags=_tags(raw),
                 career_min=int(lo) if lo is not None else None,
                 career_max=int(hi) if hi is not None else None,
                 location=_location(raw),

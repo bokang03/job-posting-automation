@@ -21,8 +21,18 @@ class ConfigError(Exception):
 
 @dataclass(frozen=True)
 class KeywordSpec:
+    """any/none 은 단어 목록, all 은 '그룹' 목록이다.
+
+    all 의 각 그룹은 '이 중 하나는 반드시 있어야 한다'는 뜻이고,
+    그룹끼리는 전부 만족해야 한다. 설정 파일에서는 이렇게 쓴다.
+
+        all:
+          - "백엔드"                # 반드시 '백엔드'
+          - ["Java", "Kotlin"]      # Java 나 Kotlin 중 하나는 반드시
+    """
+
     any: tuple[str, ...] = ()
-    all: tuple[str, ...] = ()
+    all: tuple[tuple[str, ...], ...] = ()
     none: tuple[str, ...] = ()
 
 
@@ -85,6 +95,39 @@ def _as_str_tuple(value, where: str) -> tuple[str, ...]:
     return tuple(v for v in out if v)
 
 
+def _as_flat_str_tuple(value, where: str) -> tuple[str, ...]:
+    """any / none 용. 중첩 목록을 쓰면 의도와 다르게 동작하므로 명확히 막는다."""
+    if isinstance(value, list) and any(isinstance(item, list) for item in value):
+        raise ConfigError(
+            f"{where} 에는 목록 안에 목록을 넣을 수 없습니다.\n"
+            f"  '이 중 하나는 반드시' 조건은 all 에서만 씁니다. 예: all: [[\"Java\", \"Kotlin\"]]"
+        )
+    return _as_str_tuple(value, where)
+
+
+def _as_groups(value, where: str) -> tuple[tuple[str, ...], ...]:
+    """all 용. 문자열 하나는 1개짜리 그룹으로, 목록은 그대로 그룹으로 만든다."""
+    if value is None:
+        return ()
+    if isinstance(value, str):
+        return ((value.strip(),),)
+    if not isinstance(value, list):
+        raise ConfigError(f"{where} 는 목록이어야 합니다.")
+
+    groups: list[tuple[str, ...]] = []
+    for item in value:
+        if isinstance(item, list):
+            members = _as_str_tuple(item, where)
+        elif item is None:
+            continue
+        else:
+            members = (str(item).strip(),)
+        members = tuple(m for m in members if m)
+        if members:
+            groups.append(members)
+    return tuple(groups)
+
+
 def _as_int(value, where: str, default: int) -> int:
     if value is None:
         return default
@@ -118,9 +161,9 @@ def _parse_profile(raw: dict, index: int) -> Profile:
     if not isinstance(kw_raw, dict):
         raise ConfigError(f"{where} 의 keywords 는 any / all / none 하위 항목을 가져야 합니다.")
     keywords = KeywordSpec(
-        any=_as_str_tuple(kw_raw.get("any"), f"{where} 의 keywords.any"),
-        all=_as_str_tuple(kw_raw.get("all"), f"{where} 의 keywords.all"),
-        none=_as_str_tuple(kw_raw.get("none"), f"{where} 의 keywords.none"),
+        any=_as_flat_str_tuple(kw_raw.get("any"), f"{where} 의 keywords.any"),
+        all=_as_groups(kw_raw.get("all"), f"{where} 의 keywords.all"),
+        none=_as_flat_str_tuple(kw_raw.get("none"), f"{where} 의 keywords.none"),
     )
 
     car_raw = raw.get("career") or {}

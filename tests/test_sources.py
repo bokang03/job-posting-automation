@@ -84,6 +84,28 @@ def test_wanted_newbie_posting_starts_at_zero_years():
     assert intern.career_min == 0
 
 
+@pytest.mark.parametrize(
+    "employment_type,expected_tag",
+    [("regular", "정규직"), ("intern", "인턴"), ("contract", "계약직"), ("freelance", "프리랜서")],
+)
+def test_wanted_employment_type_becomes_a_korean_tag(employment_type, expected_tag):
+    data = {"data": [{"id": 1, "position": "p", "company": {"name": "c"},
+                      "employment_type": employment_type}]}
+    assert expected_tag in wanted.parse_page(data)[0].tags
+
+
+def test_wanted_unknown_employment_type_produces_no_tag():
+    data = {"data": [{"id": 1, "position": "p", "company": {"name": "c"},
+                      "employment_type": "처음보는값"}]}
+    assert wanted.parse_page(data)[0].tags == ()
+
+
+def test_wanted_intern_tag_can_be_excluded_by_none_keyword():
+    data = {"data": [{"id": 1, "position": "서버 개발자", "company": {"name": "c"},
+                      "employment_type": "intern"}]}
+    assert "인턴" in wanted.parse_page(data)[0].exclusion_haystack()
+
+
 def test_wanted_missing_annual_fields_mean_career_irrelevant():
     data = {"data": [{"id": 1, "position": "p", "company": {"name": "c"}}]}
     posting = wanted.parse_page(data)[0]
