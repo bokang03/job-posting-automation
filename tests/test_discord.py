@@ -13,6 +13,7 @@ def posting(**overrides) -> JobPosting:
         url="https://example.com/1",
         tech_stacks=("Java", "Spring"),
         category="서버/백엔드 개발자",
+        tags=(),
         career_min=0,
         career_max=0,
         location="서울 강남구",
@@ -79,6 +80,16 @@ def test_embed_omits_fields_with_no_data():
     assert "기술스택" not in fields
     # 경력은 정보가 없어도 '경력무관'으로 항상 보여준다
     assert "경력" in fields
+
+
+def test_embed_shows_employment_type_when_known():
+    fields = {f["name"]: f["value"] for f in build_embed(posting(tags=("정규직",)), "p")["fields"]}
+    assert fields["고용형태"] == "정규직"
+
+
+def test_embed_omits_employment_type_when_unknown():
+    fields = {f["name"] for f in build_embed(posting(tags=()), "p")["fields"]}
+    assert "고용형태" not in fields
 
 
 def test_embed_footer_names_the_site_and_profile():

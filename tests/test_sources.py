@@ -227,5 +227,34 @@ def test_jobkorea_career_text_parses_into_year_range(text, expected):
     assert jobkorea.parse_career_text(text) == expected
 
 
+@pytest.mark.parametrize(
+    "fixture,expected",
+    [
+        ("jobkorea_detail_trainee.html", "연수생/교육생"),
+        ("jobkorea_detail_fulltime.html", "정규직"),
+        ("jobkorea_detail_intern.html", "인턴"),
+    ],
+)
+def test_jobkorea_detail_page_yields_employment_type(fixture, expected):
+    """고용형태는 검색 목록에 없고 상세 페이지에만 있다."""
+    html = (FIXTURES / fixture).read_text(encoding="utf-8")
+    assert jobkorea.parse_employment_type(html) == expected
+
+
+def test_jobkorea_employment_type_drops_the_parenthesised_detail():
+    """'인턴 (근무기간 2개월, 정규직 전환 가능)' 에서 괄호 안은 버린다.
+
+    괄호 안에 '정규직' 이 들어 있어서, 그대로 두면 인턴 공고가
+    정규직으로 잘못 분류된다.
+    """
+    html = (FIXTURES / "jobkorea_detail_intern.html").read_text(encoding="utf-8")
+    value = jobkorea.parse_employment_type(html)
+    assert "정규직" not in value
+
+
+def test_jobkorea_employment_type_is_empty_when_the_page_has_no_such_field():
+    assert jobkorea.parse_employment_type("<html><body><p>점검 중</p></body></html>") == ""
+
+
 def test_jobkorea_returns_empty_list_for_unrecognisable_html():
     assert jobkorea.parse_html("<html><body><p>서비스 점검 중입니다</p></body></html>") == []

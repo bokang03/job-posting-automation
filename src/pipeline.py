@@ -77,6 +77,55 @@ def _candidates(profile: Profile, collected: dict[str, list[JobPosting]]) -> lis
     return out
 
 
+class _Budget:
+    """이번 실행에서 상세 조회를 몇 건까지 더 할 수 있는지 세는 카운터."""
+
+    def __init__(self, limit: int):
+        self.left = limit
+
+    def take(self, count: int) -> int:
+        allowed = max(0, min(count, self.left))
+        self.left -= allowed
+        return allowed
+
+
+def _enrich(postings, sources: dict, config: Config, budget: _Budget, report: RunReport, profile: Profile):
+    """소스별로 묶어서 추가 정보를 채운다.
+
+    조건을 통과했고 아직 안 보낸 공고만 들어오므로, 평소에는 몇 건 되지 않는다.
+    설정을 크게 바꿔 후보가 갑자기 불어나는 경우를 대비해 상한을 둔다.
+    보강한 뒤에는 새로 알게 된 정보(고용형태 등)로 조건을 한 번 더 확인한다.
+    """
+    by_source: dict[str, list] = {}
+    for p in postings:
+        by_source.setdefault(p.source, []).append(p)
+
+    enriched: dict[str, JobPosting] = {}
+    for name, group in by_source.items():
+        source = sources.get(name)
+        if source is None or not hasattr(source, "enrich"):
+            continue
+        allowed = budget.take(len(group))
+        if allowed <= 0:
+            continue
+        try:
+            for p in source.enrich(group[:allowed]):
+                enriched[p.uid] = p
+        except Exception as e:
+            log.warning("[%s] 상세 조회 실패: %s", name, e)
+            report.failed_sources.setdefault(name, f"상세 조회 실패: {e}")
+
+    out = []
+    for p in postings:
+        p = enriched.get(p.uid, p)
+        # 보강으로 알게 된 값 때문에 조건에서 빠질 수 있다 (예: 고용형태가 연수생)
+        if p.uid in enriched and not matches_profile(p, profile):
+            log.info("  보강 후 제외: %s | %s (%s)", p.company, p.title, ", ".join(p.tags))
+            continue
+        out.append(p)
+    return out
+
+
 def run(
     config: Config,
     sources: dict,
@@ -90,6 +139,7 @@ def run(
     first_run = store.is_first_run
     limit = config.settings.first_run_limit if first_run else config.settings.max_notifications_per_run
     budget = limit
+    enrich_budget = _Budget(config.settings.max_enrich_per_run)
 
     for profile in config.active_profiles:
         matched = _candidates(profile, collected)
@@ -99,6 +149,8 @@ def run(
         if dry_run:
             report.sent_by_profile[profile.name] = 0
             continue
+
+        fresh = _enrich(fresh, sources, config, enrich_budget, report, profile)
 
         to_send = fresh[:budget] if budget > 0 else []
 

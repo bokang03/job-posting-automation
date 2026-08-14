@@ -70,6 +70,8 @@ class Settings:
     first_run_limit: int = 10
     seen_retention_days: int = 60
     max_pages: int = 3
+    # 알림 직전 상세 페이지를 열어보는 최대 건수 (잡코리아 고용형태 확인용)
+    max_enrich_per_run: int = 40
 
 
 @dataclass(frozen=True)
@@ -228,6 +230,7 @@ def load_config(path: str | os.PathLike) -> Config:
         first_run_limit=_as_int(s_raw.get("first_run_limit"), "settings.first_run_limit", 10),
         seen_retention_days=_as_int(s_raw.get("seen_retention_days"), "settings.seen_retention_days", 60),
         max_pages=max(1, _as_int(s_raw.get("max_pages"), "settings.max_pages", 3)),
+        max_enrich_per_run=_as_int(s_raw.get("max_enrich_per_run"), "settings.max_enrich_per_run", 40),
     )
 
     p_raw = raw.get("profiles")

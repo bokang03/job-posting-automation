@@ -59,6 +59,34 @@ def parse_career_text(text: str) -> tuple[int | None, int | None]:
     return None, None
 
 
+def parse_employment_type(html: str) -> str:
+    """상세 페이지에서 고용형태(정규직 / 인턴 / 연수생·교육생 ...)를 읽는다.
+
+    검색 결과 목록에는 이 값이 없어서 상세 페이지를 따로 봐야 한다.
+    페이지에는 '고용형태' 라벨 바로 뒤에 값이 온다.
+
+    '인턴 (근무기간 2개월, 정규직 전환 가능)' 처럼 괄호 설명이 붙는 경우가 있는데,
+    괄호 안에 '정규직' 이 들어 있어서 그대로 두면 인턴이 정규직으로 잘못 분류된다.
+    그래서 괄호 이후는 버린다.
+    """
+    if "고용형태" not in (html or ""):
+        return ""
+
+    soup = BeautifulSoup(html, "html.parser")
+    # 태그를 줄바꿈으로 바꿔 라벨과 값을 분리한다.
+    lines = [line.strip() for line in soup.get_text("\n").split("\n")]
+    lines = [line for line in lines if line]
+
+    for i, line in enumerate(lines):
+        if line != "고용형태":
+            continue
+        for value in lines[i + 1 :]:
+            if value == "고용형태":
+                continue
+            return value.split("(")[0].strip()
+    return ""
+
+
 def _card_texts(card) -> list[str]:
     out = []
     for span in card.find_all("span"):
@@ -140,3 +168,21 @@ class JobKoreaSource(JobSource):
             log.info("  잡코리아 '%s' 검색: %d건", query, len(found))
             collected.extend(found)
         return dedupe(collected)
+
+    def enrich(self, postings: list[JobPosting]) -> list[JobPosting]:
+        """공고마다 상세 페이지를 열어 고용형태를 채운다.
+
+        실패해도 공고를 버리지 않는다. 상세 조회가 막혔다고 진짜 기회를 놓치는 것보다,
+        고용형태를 모른 채로 알림이 한 번 오는 편이 낫다.
+        """
+        out: list[JobPosting] = []
+        for posting in postings:
+            try:
+                html = self.http.get_text(READ_URL.format(id=posting.job_id))
+                label = parse_employment_type(html)
+            except Exception as e:
+                log.info("  잡코리아 상세 조회 실패(%s): %s", posting.job_id, e)
+                out.append(posting)
+                continue
+            out.append(posting.with_tags((label,)) if label else posting)
+        return out

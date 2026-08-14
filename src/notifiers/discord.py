@@ -33,6 +33,10 @@ def _clip(text: str, limit: int) -> str:
 
 def build_embed(posting: JobPosting, profile_name: str) -> dict:
     fields = [{"name": "경력", "value": posting.career_text, "inline": True}]
+    if posting.tags:
+        fields.append(
+            {"name": "고용형태", "value": _clip(", ".join(posting.tags), MAX_FIELD_VALUE), "inline": True}
+        )
     if posting.location:
         fields.append({"name": "지역", "value": _clip(posting.location, MAX_FIELD_VALUE), "inline": True})
     if posting.deadline:

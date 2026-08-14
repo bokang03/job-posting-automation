@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, replace
 
 # 사이트 코드 -> 사람이 읽는 이름
 SOURCE_LABELS = {
@@ -39,6 +39,11 @@ class JobPosting:
     career_max: int | None = None
     location: str = ""
     deadline: str = ""
+
+    def with_tags(self, extra: tuple[str, ...]) -> "JobPosting":
+        """태그를 덧붙인 사본. 나중에 알아낸 정보(고용형태 등)를 채울 때 쓴다."""
+        merged = self.tags + tuple(t for t in extra if t and t not in self.tags)
+        return replace(self, tags=merged)
 
     @property
     def uid(self) -> str:
