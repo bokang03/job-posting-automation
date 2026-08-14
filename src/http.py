@@ -16,15 +16,27 @@ USER_AGENT = (
 
 
 class HttpClient:
-    def __init__(self, timeout: int = 20, retries: int = 2, pause: float = 0.7):
+    def __init__(self, timeout: int = 30, retries: int = 3, pause: float = 1.0):
         self.timeout = timeout
         self.retries = retries
         self.pause = pause
         self.session = requests.Session()
+        # 실제 브라우저가 보내는 헤더를 최대한 맞춘다.
+        # 원티드는 이게 부족하면 403 Forbidden 으로 거절한다.
         self.session.headers.update(
             {
                 "User-Agent": USER_AGENT,
-                "Accept-Language": "ko-KR,ko;q=0.9,en;q=0.8",
+                "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+                # Accept-Encoding 은 직접 설정하지 않는다.
+                # 'br'(brotli)을 넣으면 서버가 brotli 로 보내는데 requests 가
+                # 그것을 풀지 못해 응답이 빈 값이 된다. requests 가 알아서 맞춘다.
+                "Cache-Control": "no-cache",
+                "Pragma": "no-cache",
+                "sec-ch-ua": '"Chromium";v="126", "Not:A-Brand";v="24", "Google Chrome";v="126"',
+                "sec-ch-ua-mobile": "?0",
+                "sec-ch-ua-platform": '"Windows"',
+                "Upgrade-Insecure-Requests": "1",
+                "Connection": "keep-alive",
             }
         )
 

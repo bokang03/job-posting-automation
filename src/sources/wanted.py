@@ -24,6 +24,17 @@ API = (
 POSITION_URL = "https://www.wanted.co.kr/wd/{id}"
 PAGE_SIZE = 100
 
+# 원티드는 브라우저에서 온 요청인지 꽤 까다롭게 본다.
+# 해외(클라우드) IP 에서는 이 헤더들이 없으면 403 Forbidden 으로 거절한다.
+BROWSER_HEADERS = {
+    "Referer": "https://www.wanted.co.kr/wdlist/518",
+    "Origin": "https://www.wanted.co.kr",
+    "Sec-Fetch-Site": "same-origin",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Dest": "empty",
+    "X-Requested-With": "XMLHttpRequest",
+}
+
 
 # 원티드는 고용형태를 코드로 준다. 다른 세 사이트에는 없는 정보라 태그로 노출해
 # none 키워드("인턴", "계약직")로 걸러낼 수 있게 한다.
@@ -81,7 +92,7 @@ class WantedSource(JobSource):
         collected: list[JobPosting] = []
         for page in range(max_pages):
             url = API.format(group=DEV_JOB_GROUP, limit=PAGE_SIZE, offset=page * PAGE_SIZE)
-            postings = parse_page(self.http.get_json(url, {"Referer": "https://www.wanted.co.kr/"}))
+            postings = parse_page(self.http.get_json(url, BROWSER_HEADERS))
             if not postings:
                 break
             collected.extend(postings)
