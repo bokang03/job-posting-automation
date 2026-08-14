@@ -51,6 +51,8 @@ class Profile:
     keywords: KeywordSpec
     career: CareerSpec
     locations: tuple[str, ...]
+    # 비어 있으면 회사를 가리지 않는다. 값이 있으면 그 회사들의 공고만 받는다.
+    include_companies: tuple[str, ...]
     exclude_companies: tuple[str, ...]
     search_queries: tuple[str, ...]
     webhook_env: str
@@ -194,6 +196,7 @@ def _parse_profile(raw: dict, index: int) -> Profile:
         keywords=keywords,
         career=career,
         locations=_as_str_tuple(raw.get("locations"), f"{where} 의 locations"),
+        include_companies=_as_str_tuple(raw.get("include_companies"), f"{where} 의 include_companies"),
         exclude_companies=_as_str_tuple(raw.get("exclude_companies"), f"{where} 의 exclude_companies"),
         search_queries=_as_str_tuple(raw.get("search_queries"), f"{where} 의 search_queries"),
         webhook_env=webhook_env,

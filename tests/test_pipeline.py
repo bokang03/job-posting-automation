@@ -30,6 +30,7 @@ def profile(name="백엔드 신입", sources=("jumpit",), **overrides) -> Profil
         keywords=KeywordSpec(any=("백엔드",), all=(), none=()),
         career=CareerSpec(min_years=0, max_years=0, include_irrelevant=True),
         locations=(),
+        include_companies=(),
         exclude_companies=(),
         search_queries=(),
         webhook_env="DISCORD_WEBHOOK_URL",

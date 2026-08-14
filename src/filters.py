@@ -16,12 +16,19 @@ _NO_UPPER_BOUND = 99
 def _pattern(word: str) -> re.Pattern:
     """키워드를 '영문·숫자 경계' 규칙으로 찾는 정규식.
 
-    앞뒤가 영문자나 숫자면 매칭하지 않는다. 이 규칙 하나로 두 가지가 동시에 해결된다.
-      - 'Java' 가 'JavaScript' 에 걸리지 않는다 (뒤에 s 가 붙어 있으므로)
+    영어 단어가 다른 단어 속에 묻혀 잘못 걸리는 것을 막는다.
+      - 'Java' 는 'JavaScript' 에 걸리지 않는다 (뒤에 s 가 붙어 있으므로)
       - 'Spring' 은 'Spring Boot' 에 걸린다 (뒤가 공백이므로)
-      - '백엔드' 는 '백엔드개발자' 에 걸린다 (한글은 영문·숫자가 아니므로)
+      - 'KB' 는 'KB증권' 에 걸리지만 'KBS미디어' 에는 걸리지 않는다
+
+    경계 검사는 키워드가 영문·숫자로 시작/끝날 때만 건다.
+    한글 키워드에까지 걸면 'KB국민은행' 의 '국민은행' 처럼
+    앞이 영문자인 경우를 놓친다.
     """
-    return re.compile(rf"(?<![a-z0-9]){re.escape(word.lower())}(?![a-z0-9])")
+    w = word.lower()
+    prefix = r"(?<![a-z0-9])" if w[:1].isascii() and w[:1].isalnum() else ""
+    suffix = r"(?![a-z0-9])" if w[-1:].isascii() and w[-1:].isalnum() else ""
+    return re.compile(prefix + re.escape(w) + suffix)
 
 
 def _contains(haystack: str, word: str) -> bool:
@@ -67,9 +74,15 @@ def _location_matches(posting: JobPosting, locations: tuple[str, ...]) -> bool:
 
 
 def matches_profile(posting: JobPosting, profile: Profile) -> bool:
-    for company in profile.exclude_companies:
-        if company.lower() in posting.company.lower():
+    company = posting.company.lower()
+
+    for name in profile.exclude_companies:
+        if _contains(company, name):
             return False
+
+    # 화이트리스트가 있으면 명단에 있는 회사만 통과시킨다.
+    if profile.include_companies and not any(_contains(company, n) for n in profile.include_companies):
+        return False
 
     if not _keywords_match(posting, profile.keywords):
         return False

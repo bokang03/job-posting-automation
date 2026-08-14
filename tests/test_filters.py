@@ -30,6 +30,7 @@ def profile(**overrides) -> Profile:
         keywords=KeywordSpec(any=("백엔드",), all=(), none=()),
         career=CareerSpec(min_years=0, max_years=0, include_irrelevant=True),
         locations=(),
+        include_companies=(),
         exclude_companies=(),
         search_queries=(),
         webhook_env="DISCORD_WEBHOOK_URL",
@@ -243,3 +244,45 @@ def test_excluded_company_is_rejected():
 def test_excluded_company_matches_partially():
     p = posting(company="(주)싫은회사코리아")
     assert not matches_profile(p, profile(exclude_companies=("싫은회사",)))
+
+
+# --- 회사 화이트리스트 -----------------------------------------------------
+
+
+def test_empty_company_whitelist_allows_every_company():
+    assert matches_profile(posting(company="아무회사"), profile(include_companies=()))
+
+
+def test_whitelisted_company_passes():
+    p = posting(company="KB국민은행")
+    assert matches_profile(p, profile(include_companies=("국민은행", "하나은행")))
+
+
+def test_company_not_on_the_whitelist_is_rejected():
+    p = posting(company="이름없는스타트업")
+    assert not matches_profile(p, profile(include_companies=("국민은행", "하나은행")))
+
+
+def test_whitelist_matches_company_name_with_prefix_and_suffix():
+    p = posting(company="㈜하나금융티아이")
+    assert matches_profile(p, profile(include_companies=("하나금융티아이",)))
+
+
+def test_short_english_whitelist_entry_respects_word_boundaries():
+    """'KB' 가 'KBS미디어' 같은 무관한 회사에 걸리면 안 된다."""
+    assert matches_profile(posting(company="KB증권"), profile(include_companies=("KB",)))
+    assert not matches_profile(posting(company="KBS미디어"), profile(include_companies=("KB",)))
+
+
+def test_exclusion_wins_over_whitelist():
+    p = posting(company="국민은행")
+    assert not matches_profile(
+        p, profile(include_companies=("국민은행",), exclude_companies=("국민은행",))
+    )
+
+
+def test_whitelist_is_checked_independently_of_keywords():
+    """회사가 명단에 있어도 직무 키워드 조건은 그대로 적용된다."""
+    p = posting(company="국민은행", title="경비원 모집", category="", tech_stacks=())
+    prof = profile(include_companies=("국민은행",), keywords=KeywordSpec(any=("개발",), all=(), none=()))
+    assert not matches_profile(p, prof)
