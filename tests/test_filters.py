@@ -129,6 +129,34 @@ def test_none_keyword_in_broad_category_list_does_not_reject():
     assert matches_profile(p, profile(keywords=spec))
 
 
+def test_excluding_experienced_postings_does_not_kill_career_irrelevant_ones():
+    """'경력직' 제외가 '경력무관' 공고까지 날리면 안 된다.
+
+    설정에 '경력' 을 단독으로 적으면 '경력무관' 에도 걸려버리므로,
+    반드시 '경력직' 처럼 구체적으로 적어야 한다는 것을 고정해 둔다.
+    """
+    p = posting(title="JAVA 웹 개발자 (경력무관)", category="", tech_stacks=())
+    spec = KeywordSpec(any=("개발자",), all=(), none=("경력직", "경력채용"))
+    assert matches_profile(p, profile(keywords=spec))
+
+
+def test_experienced_only_posting_is_excluded_by_keyword():
+    p = posting(title="[신세계아이앤씨] 2026년 3분기 경력채용", category="", tech_stacks=())
+    spec = KeywordSpec(any=(), all=(), none=("경력채용",))
+    assert not matches_profile(p, profile(keywords=spec))
+
+
+def test_special_hiring_track_postings_are_excluded():
+    """장애인·보훈·병역특례 전형은 지원 대상이 아니므로 걸러낸다."""
+    spec = KeywordSpec(any=("개발자",), all=(), none=("장애인", "보훈", "전문연구요원"))
+    for title in [
+        "장애인 채용 - 웹 개발자",
+        "국가보훈 대상자 특별채용 개발자",
+        "백엔드 개발자 (전문연구요원 가능)",
+    ]:
+        assert not matches_profile(posting(title=title, category="", tech_stacks=()), profile(keywords=spec))
+
+
 def test_any_keyword_still_matches_against_broad_category():
     p = posting(title="2026년 연구소 상시채용", category="정보보안, 백엔드개발자", tech_stacks=())
     assert matches_profile(p, profile(keywords=KeywordSpec(any=("백엔드",), all=(), none=())))
