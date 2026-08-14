@@ -1,0 +1,112 @@
+{
+  "message": "포지션 리스트가 조회되었습니다.",
+  "status": 200,
+  "code": "P004",
+  "result": {
+    "totalCount": 730,
+    "page": 1,
+    "keyword": "",
+    "keywordType": "etc",
+    "positions": [
+      {
+        "id": 54616481,
+        "jobCategory": "SW/솔루션",
+        "logo": "https://cdn.jumpit.co.kr/images/hmlee_4/20210101160145527_344_348.jpg",
+        "imagePath": "https://cdn.jumpit.co.kr/images/15972/20253927133910761/profile-image.jpg",
+        "title": "Vision Field Application Engineer",
+        "companyName": "씨메스",
+        "techStacks": [
+          "C++",
+          "Confluence",
+          "Git",
+          "JavaScript",
+          "Jira",
+          "Qt",
+          "OpenCV",
+          "SW"
+        ],
+        "viewCount": 26,
+        "newcomer": false,
+        "minCareer": 1,
+        "maxCareer": 7,
+        "locations": [
+          "서울 강남구"
+        ],
+        "alwaysOpen": false,
+        "closedAt": "2026-08-31T23:59:59",
+        "serialNumber": "2208886560",
+        "encodedSerialNumber": "MjIwODg4NjU2MA==",
+        "celebration": 50,
+        "scraped": false,
+        "applied": false
+      },
+      {
+        "id": 54484174,
+        "jobCategory": "devops/시스템 엔지니어",
+        "logo": "https://cdn.jumpit.co.kr/lg/images/48988/20251719141714131/profile-image.webp",
+        "imagePath": "https://cdn.jumpit.co.kr/images/jhw_48988/20223804133819197_5616_3744.jpg",
+        "title": "Infra/System Engineer",
+        "companyName": "콜로세움코퍼레이션",
+        "techStacks": [
+          "Perl",
+          "Python",
+          "Ruby",
+          "AWS",
+          "GCP",
+          "AZURE",
+          "Shell"
+        ],
+        "scrapCount": 1,
+        "viewCount": 33,
+        "newcomer": false,
+        "minCareer": 5,
+        "maxCareer": 12,
+        "locations": [
+          "서울 강남구"
+        ],
+        "alwaysOpen": false,
+        "closedAt": "2026-08-16T23:59:59",
+        "serialNumber": "5078601649",
+        "encodedSerialNumber": "NTA3ODYwMTY0OQ==",
+        "celebration": 50,
+        "scraped": false,
+        "applied": false
+      },
+      {
+        "id": 54753694,
+        "jobCategory": "서버/백엔드 개발자",
+        "logo": "https://cdn.jumpit.co.kr/lg/images/260250/20242431122406533/profile-image.webp",
+        "imagePath": "https://cdn.jumpit.co.kr/images/53420/20240406170438871/profile-image.jpeg",
+        "title": "백엔드 개발자",
+        "companyName": "티엔에이치",
+        "techStacks": [
+          "Amazon EMR",
+          "Cassandra",
+          "Docker",
+          "Git",
+          "JavaScript",
+          "Jira",
+          "Node.js",
+          "PostgreSQL",
+          "TypeScript",
+          "SQL"
+        ],
+        "viewCount": 1,
+        "newcomer": false,
+        "minCareer": 3,
+        "maxCareer": 5,
+        "locations": [
+          "경기 성남시 분당구"
+        ],
+        "alwaysOpen": false,
+        "closedAt": "2026-09-12T23:59:59",
+        "serialNumber": "1298628564",
+        "encodedSerialNumber": "MTI5ODYyODU2NA==",
+        "celebration": 50,
+        "scraped": false,
+        "applied": false
+      }
+    ],
+    "emptyPosition": false
+  }
+}

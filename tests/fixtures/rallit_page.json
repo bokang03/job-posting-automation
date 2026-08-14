@@ -1,0 +1,105 @@
+{
+  "statusCode": "OK",
+  "message": "",
+  "data": {
+    "pageNumber": 1,
+    "pageSize": 20,
+    "totalCount": 307,
+    "totalPage": 16,
+    "items": [
+      {
+        "id": 4233,
+        "title": "[미리캔버스] 시니어 백엔드 개발자",
+        "jobLevel": "IRRELEVANT",
+        "jobLevels": [
+          "SENIOR",
+          "MIDDLE"
+        ],
+        "startedAt": "1970-01-01",
+        "endedAt": "9999-12-31",
+        "companyId": 293,
+        "companyName": "미리디",
+        "addressRegion": "GURO_GASAN",
+        "companyRepresentativeImage": "https://cdn.rallit.com/image/2022-09-07/_vEOAkWyq6F2iXN9kkBVQ.jpg",
+        "isBookmarked": false,
+        "status": {
+          "code": "HIRING",
+          "name": "모집 중"
+        },
+        "url": "https://www.rallit.com/positions/4233",
+        "joinReward": "0",
+        "jobSkillKeywords": [
+          "Java",
+          "Spring Boot",
+          "PostgreSQL",
+          "MongoDB",
+          "dynamodb",
+          "Redis",
+          "vector-database",
+          "datadog",
+          "azure-databricks",
+          "AWS"
+        ],
+        "partnerLogo": "",
+        "isPartner": false
+      },
+      {
+        "id": 3334,
+        "title": "웹(Web) 프론트엔드 개발자",
+        "jobLevel": "IRRELEVANT",
+        "jobLevels": [
+          "JUNIOR",
+          "MIDDLE"
+        ],
+        "startedAt": "1970-01-01",
+        "endedAt": "9999-12-31",
+        "companyId": 1296,
+        "companyName": "(주)누아",
+        "addressRegion": "SEOUL",
+        "companyRepresentativeImage": "https://cdn.rallit.com/image/2025-03-18/Jlhe1DVxoMSGjHfLrrdey.png",
+        "isBookmarked": false,
+        "status": {
+          "code": "HIRING",
+          "name": "모집 중"
+        },
+        "url": "https://www.rallit.com/positions/3334",
+        "joinReward": "0",
+        "jobSkillKeywords": [
+          "TypeScript"
+        ],
+        "partnerLogo": "",
+        "isPartner": false
+      },
+      {
+        "id": 1747,
+        "title": "안드로이드 개발자",
+        "jobLevel": "IRRELEVANT",
+        "jobLevels": [
+          "IRRELEVANT"
+        ],
+        "startedAt": "1970-01-01",
+        "endedAt": "9999-12-31",
+        "companyId": 120,
+        "companyName": "(주)오메타",
+        "addressRegion": "GANGNAM",
+        "companyRepresentativeImage": "https://cdn.rallit.com/image/2022-03-16/n2j5lJXxDCwR2OZPeTie1.png",
+        "isBookmarked": false,
+        "status": {
+          "code": "HIRING",
+          "name": "모집 중"
+        },
+        "url": "https://www.rallit.com/positions/1747",
+        "joinReward": "0",
+        "jobSkillKeywords": [
+          "Android",
+          "Java",
+          "Kotlin",
+          "MVC"
+        ],
+        "partnerLogo": "",
+        "isPartner": false
+      }
+    ]
+  },
+  "errorCode": null
+}

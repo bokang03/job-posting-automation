@@ -1,0 +1,14 @@
+# 로컬 비밀값 (디스코드 웹훅 URL) - 절대 커밋되면 안 됩니다
+.env
+
+# 파이썬
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# 편집기 / 도구 로컬 설정
+.vscode/
+.idea/
+.claude/
