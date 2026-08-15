@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 
 from .career import refine_career
 from .config import Config, Profile
@@ -129,12 +130,47 @@ def _enrich(postings, sources: dict, config: Config, budget: _Budget, report: Ru
     return out
 
 
+def _maybe_send_status(config: Config, report: RunReport, notifier_for, status, now) -> None:
+    """새 공고가 없어도 시스템이 살아있는지 알려준다.
+
+    조용한 게 정상인지 고장인지 구분되지 않는 문제를 위한 것이다.
+    매 실행마다 보내면 도배가 되므로 StatusStore 가 간격을 관리한다.
+    """
+    if status is None:
+        return
+
+    now = now or datetime.now(timezone.utc)
+    if not status.should_send(
+        sent_count=report.total_sent,
+        has_failures=bool(report.failed_sources),
+        heartbeat_hours=config.settings.heartbeat_hours,
+        now=now,
+    ):
+        return
+
+    profiles = config.active_profiles
+    if not profiles:
+        return
+
+    try:
+        notifier_for(profiles[0]).send_status(report)
+    except Exception as e:
+        log.warning("상태 메시지 전송 실패: %s", e)
+        return
+
+    status.mark_sent(now)
+    status.save()
+    log.info("상태 메시지를 보냈습니다.")
+
+
 def run(
     config: Config,
     sources: dict,
     notifier_for,
     store: SeenStore,
     dry_run: bool = False,
+    status=None,
+    now=None,
 ) -> RunReport:
     report = RunReport(first_run=store.is_first_run, dry_run=dry_run)
     collected = gather(config, sources, report)
@@ -175,5 +211,6 @@ def run(
 
     if not dry_run:
         store.save()
+        _maybe_send_status(config, report, notifier_for, status, now)
 
     return report

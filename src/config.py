@@ -72,6 +72,8 @@ class Settings:
     max_pages: int = 3
     # 알림 직전 상세 페이지를 열어보는 최대 건수 (잡코리아 고용형태 확인용)
     max_enrich_per_run: int = 40
+    # 새 공고가 없어도 '살아있다'는 상태 메시지를 보낼 간격(시간). 0 이면 안 보냄.
+    heartbeat_hours: float = 6.0
 
 
 @dataclass(frozen=True)
@@ -137,6 +139,15 @@ def _as_int(value, where: str, default: int) -> int:
         return default
     try:
         return int(value)
+    except (TypeError, ValueError):
+        raise ConfigError(f"{where} 는 숫자여야 합니다. 지금 값: {value!r}") from None
+
+
+def _as_float(value, where: str, default: float) -> float:
+    if value is None:
+        return default
+    try:
+        return float(value)
     except (TypeError, ValueError):
         raise ConfigError(f"{where} 는 숫자여야 합니다. 지금 값: {value!r}") from None
 
@@ -231,6 +242,7 @@ def load_config(path: str | os.PathLike) -> Config:
         seen_retention_days=_as_int(s_raw.get("seen_retention_days"), "settings.seen_retention_days", 60),
         max_pages=max(1, _as_int(s_raw.get("max_pages"), "settings.max_pages", 3)),
         max_enrich_per_run=_as_int(s_raw.get("max_enrich_per_run"), "settings.max_enrich_per_run", 40),
+        heartbeat_hours=_as_float(s_raw.get("heartbeat_hours"), "settings.heartbeat_hours", 6.0),
     )
 
     p_raw = raw.get("profiles")

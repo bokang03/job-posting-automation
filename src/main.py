@@ -20,6 +20,7 @@ from .notifiers.discord import DiscordNotifier
 from .pipeline import RunReport, gather, run
 from .sources import SOURCES
 from .state import SeenStore
+from .status import StatusStore
 
 ROOT = Path(__file__).resolve().parent.parent
 log = logging.getLogger("joballert")
@@ -163,9 +164,12 @@ def main(argv=None) -> int:
         print("\n(--dry-run 이므로 디스코드로 아무것도 보내지 않았고, 기록도 남기지 않았습니다.)")
         return 0
 
+    status = StatusStore(Path(args.state).parent / "status.json")
+    status.load()
+
     try:
         notifier_factory = make_notifier_factory({})
-        report = run(config, sources, notifier_factory, store)
+        report = run(config, sources, notifier_factory, store, status=status)
     except ConfigError as e:
         # 작업 스케줄러로 창 없이 돌 때는 화면 출력을 볼 수 없으므로
         # 로그 파일에도 반드시 남긴다.

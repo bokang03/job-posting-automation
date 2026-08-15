@@ -1,7 +1,13 @@
 import pytest
 
 from src.models import JobPosting
-from src.notifiers.discord import DiscordNotifier, build_embed
+from src.notifiers.discord import (
+    HEALTHY_COLOR,
+    WARNING_COLOR,
+    DiscordNotifier,
+    build_embed,
+    build_status_embed,
+)
 
 
 def posting(**overrides) -> JobPosting:
@@ -163,6 +169,68 @@ def test_one_failed_batch_does_not_stop_the_next_batch():
     # 첫 배치(10건)는 실패했지만 두 번째 배치(5건)는 그대로 전송된다
     assert sent == 5
     assert len(transport.calls) == 2
+
+
+# --- 상태 메시지 -----------------------------------------------------------
+
+
+def report(**overrides):
+    from src.pipeline import RunReport
+
+    r = RunReport()
+    r.fetched_by_source = {"jumpit": 48, "wanted": 300}
+    r.matched_by_profile = {"백엔드": 48}
+    r.sent_by_profile = {"백엔드": 0}
+    for k, v in overrides.items():
+        setattr(r, k, v)
+    return r
+
+
+def test_healthy_status_says_everything_is_fine():
+    embed = build_status_embed(report())
+    assert "정상" in embed["title"]
+
+
+def test_healthy_status_is_green():
+    assert build_status_embed(report())["color"] == HEALTHY_COLOR
+
+
+def test_status_lists_what_each_site_returned():
+    value = next(f["value"] for f in build_status_embed(report())["fields"] if f["name"] == "수집")
+    assert "jumpit" in value and "48" in value
+    assert "wanted" in value and "300" in value
+
+
+def test_status_lists_matches_per_profile():
+    value = next(f["value"] for f in build_status_embed(report())["fields"] if f["name"] == "조건 일치")
+    assert "백엔드" in value and "48" in value
+
+
+def test_status_with_a_failed_site_is_flagged():
+    embed = build_status_embed(report(failed_sources={"jobkorea": "ConnectTimeoutError"}))
+    assert "실패" in embed["title"]
+    assert embed["color"] == WARNING_COLOR
+
+
+def test_failed_site_reason_is_shown_so_it_can_be_acted_on():
+    embed = build_status_embed(report(failed_sources={"jobkorea": "ConnectTimeoutError"}))
+    value = next(f["value"] for f in embed["fields"] if f["name"] == "수집 실패")
+    assert "jobkorea" in value
+    assert "ConnectTimeoutError" in value
+
+
+def test_long_failure_reason_is_truncated_to_discord_limit():
+    embed = build_status_embed(report(failed_sources={"jobkorea": "x" * 3000}))
+    value = next(f["value"] for f in embed["fields"] if f["name"] == "수집 실패")
+    assert len(value) <= 1024
+
+
+def test_status_notifier_sends_one_message():
+    transport = FakeTransport()
+    notifier, _ = make_notifier(transport)
+    assert notifier.send_status(report()) is True
+    assert len(transport.calls) == 1
+    assert len(transport.calls[0][1]["embeds"]) == 1
 
 
 def test_missing_webhook_url_is_rejected_early():

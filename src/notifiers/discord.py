@@ -16,6 +16,9 @@ MAX_EMBEDS_PER_MESSAGE = 10
 MAX_TITLE = 256
 MAX_FIELD_VALUE = 1024
 
+HEALTHY_COLOR = 0x2ECC71  # 초록 - 정상
+WARNING_COLOR = 0xE67E22  # 주황 - 일부 사이트 실패
+
 SOURCE_COLORS = {
     "jumpit": 0x4A6EE0,
     "wanted": 0x3366FF,
@@ -56,6 +59,65 @@ def build_embed(posting: JobPosting, profile_name: str) -> dict:
         "color": SOURCE_COLORS.get(posting.source, DEFAULT_COLOR),
         "fields": fields,
         "footer": {"text": f"{posting.source_label} · {profile_name}"},
+    }
+
+
+def build_status_embed(report) -> dict:
+    """새 공고가 없을 때 '살아있다'는 것을 알리는 카드.
+
+    조용한 게 정상인지 고장인지 구분되지 않는 문제를 해결하려고 만든다.
+    수집 건수와 조건 일치 건수를 함께 보여주면, 필터가 너무 좁은 건지
+    정말 새 공고가 없는 건지도 판단할 수 있다.
+    """
+    failed = getattr(report, "failed_sources", {}) or {}
+
+    fields = []
+    if report.fetched_by_source:
+        fields.append(
+            {
+                "name": "수집",
+                "value": _clip(
+                    "\n".join(f"{name} {count}건" for name, count in report.fetched_by_source.items()),
+                    MAX_FIELD_VALUE,
+                ),
+                "inline": True,
+            }
+        )
+    if report.matched_by_profile:
+        fields.append(
+            {
+                "name": "조건 일치",
+                "value": _clip(
+                    "\n".join(f"{name} {count}건" for name, count in report.matched_by_profile.items()),
+                    MAX_FIELD_VALUE,
+                ),
+                "inline": True,
+            }
+        )
+    if failed:
+        fields.append(
+            {
+                "name": "수집 실패",
+                "value": _clip(
+                    "\n".join(f"{name}: {reason}" for name, reason in failed.items()), MAX_FIELD_VALUE
+                ),
+                "inline": False,
+            }
+        )
+
+    if failed:
+        title = f"⚠️ 일부 사이트 수집 실패 ({len(failed)}곳)"
+        description = "나머지 사이트는 정상 동작 중입니다. 계속되면 해당 사이트가 막힌 것일 수 있습니다."
+    else:
+        title = "✅ 정상 동작 중 — 새 공고 없음"
+        description = "조건에 맞는 새 공고가 없어 알림을 보내지 않았습니다."
+
+    return {
+        "title": title,
+        "description": description,
+        "color": WARNING_COLOR if failed else HEALTHY_COLOR,
+        "fields": fields,
+        "footer": {"text": "이 메시지는 조용한 상태가 이어질 때만 옵니다"},
     }
 
 
@@ -112,6 +174,10 @@ class DiscordNotifier:
                 self.sleep(self.pause * (attempt + 1))
 
         return False
+
+    def send_status(self, report) -> bool:
+        """상태 메시지 한 건. 보냈으면 True."""
+        return self._post_batch({"embeds": [build_status_embed(report)]})
 
     def send(self, postings: list[JobPosting], profile_name: str) -> int:
         """보낸 공고 수를 반환한다. 일부 배치가 실패해도 나머지는 계속 보낸다."""
