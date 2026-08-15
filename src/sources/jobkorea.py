@@ -87,6 +87,52 @@ def parse_employment_type(html: str) -> str:
     return ""
 
 
+def _employment_raw(html: str) -> str:
+    """상세 페이지의 '고용형태' 값을 괄호 설명까지 합쳐서 가져온다.
+
+    페이지에서는 값과 설명이 서로 다른 요소라 이렇게 나뉘어 있다.
+        ['고용형태', '인턴', '(근무기간 2개월, 정규직 전환 가능)', '급여', ...]
+    괄호 줄에 '정규직 전환' 같은 핵심 정보가 들어 있으므로 함께 읽는다.
+    """
+    if "고용형태" not in (html or ""):
+        return ""
+    soup = BeautifulSoup(html, "html.parser")
+    lines = [line.strip() for line in soup.get_text("\n").split("\n")]
+    lines = [line for line in lines if line]
+
+    for i, line in enumerate(lines):
+        if line != "고용형태":
+            continue
+        rest = [v for v in lines[i + 1 :] if v != "고용형태"]
+        if not rest:
+            return ""
+        value = rest[0]
+        if len(rest) > 1 and rest[1].startswith("("):
+            value = f"{value} {rest[1]}"
+        return value
+    return ""
+
+
+def parse_employment_tags(html: str) -> tuple[str, ...]:
+    """고용형태를 태그로 만든다.
+
+    '인턴 (근무기간 2개월, 정규직 전환 가능)' 처럼 괄호 안에 중요한 정보가 있다.
+    체험형 인턴과 채용전환형 인턴은 지원 여부가 완전히 갈리므로,
+    '전환' 신호를 별도 태그로 남겨 카드에서 바로 구분할 수 있게 한다.
+    """
+    raw = _employment_raw(html)
+    if not raw:
+        return ()
+
+    primary = raw.split("(")[0].strip()
+    tags = [primary] if primary else []
+
+    if "인턴" in raw and ("전환" in raw or "연계" in raw):
+        tags.append("정규직 전환")
+
+    return tuple(tags)
+
+
 def _card_texts(card) -> list[str]:
     out = []
     for span in card.find_all("span"):
@@ -179,10 +225,10 @@ class JobKoreaSource(JobSource):
         for posting in postings:
             try:
                 html = self.http.get_text(READ_URL.format(id=posting.job_id))
-                label = parse_employment_type(html)
+                tags = parse_employment_tags(html)
             except Exception as e:
                 log.info("  잡코리아 상세 조회 실패(%s): %s", posting.job_id, e)
                 out.append(posting)
                 continue
-            out.append(posting.with_tags((label,)) if label else posting)
+            out.append(posting.with_tags(tags) if tags else posting)
         return out

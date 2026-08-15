@@ -252,6 +252,29 @@ def test_jobkorea_employment_type_drops_the_parenthesised_detail():
     assert "정규직" not in value
 
 
+def test_jobkorea_convertible_intern_is_marked_separately():
+    """'인턴 (정규직 전환 가능)' 은 체험형 인턴과 구분해야 지원 여부를 판단할 수 있다."""
+    html = (FIXTURES / "jobkorea_detail_intern.html").read_text(encoding="utf-8")
+    tags = jobkorea.parse_employment_tags(html)
+    assert "인턴" in tags
+    assert "정규직 전환" in tags
+
+
+def test_jobkorea_plain_fulltime_has_no_conversion_tag():
+    html = (FIXTURES / "jobkorea_detail_fulltime.html").read_text(encoding="utf-8")
+    tags = jobkorea.parse_employment_tags(html)
+    assert tags == ("정규직",)
+
+
+def test_jobkorea_trainee_posting_keeps_its_own_label():
+    html = (FIXTURES / "jobkorea_detail_trainee.html").read_text(encoding="utf-8")
+    assert jobkorea.parse_employment_tags(html) == ("연수생/교육생",)
+
+
+def test_jobkorea_employment_tags_are_empty_when_field_is_missing():
+    assert jobkorea.parse_employment_tags("<html><body>점검 중</body></html>") == ()
+
+
 def test_jobkorea_employment_type_is_empty_when_the_page_has_no_such_field():
     assert jobkorea.parse_employment_type("<html><body><p>점검 중</p></body></html>") == ""
 

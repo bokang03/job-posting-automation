@@ -8,6 +8,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 
+from .career import refine_career
 from .config import Config, Profile
 from .filters import matches_profile
 from .models import JobPosting
@@ -62,6 +63,8 @@ def gather(config: Config, sources: dict, report: RunReport) -> dict[str, list[J
             report.failed_sources[name] = str(e)
             collected[name] = []
             continue
+        # 사이트가 준 경력 정보보다 제목에 적힌 연차가 정확한 경우가 많다.
+        postings = [refine_career(p) for p in postings]
         collected[name] = postings
         report.fetched_by_source[name] = len(postings)
         log.info("[%s] %d건 수집", name, len(postings))
