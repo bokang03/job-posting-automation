@@ -33,6 +33,7 @@ def profile(**overrides) -> Profile:
         include_companies=(),
         exclude_companies=(),
         search_queries=(),
+        search_companies=False,
         webhook_env="DISCORD_WEBHOOK_URL",
     )
     base.update(overrides)

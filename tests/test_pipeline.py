@@ -33,6 +33,7 @@ def profile(name="백엔드 신입", sources=("jumpit",), **overrides) -> Profil
         include_companies=(),
         exclude_companies=(),
         search_queries=(),
+        search_companies=False,
         webhook_env="DISCORD_WEBHOOK_URL",
     )
     base.update(overrides)

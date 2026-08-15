@@ -24,26 +24,40 @@ class StatusStore:
     def __init__(self, path: str | os.PathLike):
         self.path = Path(path)
         self.last_sent_at: datetime | None = None
+        # 잡코리아에서 회사명을 순환 검색할 때 이번에 어디부터 볼지
+        self.query_offset: int = 0
 
     def load(self) -> None:
+        self.last_sent_at = None
+        self.query_offset = 0
         if not self.path.exists():
-            self.last_sent_at = None
             return
         try:
             data = json.loads(self.path.read_text(encoding="utf-8"))
-            stamp = data.get("last_sent_at") if isinstance(data, dict) else None
+            if not isinstance(data, dict):
+                return
+            stamp = data.get("last_sent_at")
             self.last_sent_at = datetime.fromisoformat(stamp) if stamp else None
+            self.query_offset = int(data.get("query_offset") or 0)
         except (json.JSONDecodeError, OSError, TypeError, ValueError):
             # 깨졌으면 처음부터. 최악의 경우 상태 메시지가 한 번 더 올 뿐이다.
             self.last_sent_at = None
+            self.query_offset = 0
 
     def mark_sent(self, now: datetime) -> None:
         self.last_sent_at = now
 
     def save(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        payload = {"last_sent_at": self.last_sent_at.isoformat() if self.last_sent_at else None}
+        payload = {
+            "last_sent_at": self.last_sent_at.isoformat() if self.last_sent_at else None,
+            "query_offset": self.query_offset,
+        }
         self.path.write_text(json.dumps(payload, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+
+    def advance_queries(self, by: int) -> None:
+        """다음 실행에서는 화이트리스트의 다음 구간을 검색하도록 옮긴다."""
+        self.query_offset += max(0, by)
 
     def should_send(
         self,

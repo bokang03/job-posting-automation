@@ -23,7 +23,8 @@ def profile():
         name="테스트", enabled=True, sources=("jumpit",),
         keywords=KeywordSpec(any=("백엔드",), all=(), none=()),
         career=CareerSpec(0, 0, True), locations=(), include_companies=(),
-        exclude_companies=(), search_queries=(), webhook_env="DISCORD_WEBHOOK_URL",
+        exclude_companies=(), search_queries=(), search_companies=False,
+        webhook_env="DISCORD_WEBHOOK_URL",
     )
 
 

@@ -13,6 +13,7 @@ from .career import refine_career
 from .config import Config, Profile
 from .filters import matches_profile
 from .models import JobPosting
+from .rotation import rotate
 from .state import SeenStore
 
 log = logging.getLogger(__name__)
@@ -36,20 +37,41 @@ class RunReport:
         return sum(self.matched_by_profile.values())
 
 
-def _queries_for(config: Config) -> tuple[str, ...]:
-    """검색어 기반 사이트에 넘길 단어. 모든 활성 프로필의 검색어를 합친다."""
+def _queries_for(config: Config, status=None) -> tuple[str, ...]:
+    """검색어 기반 사이트에 넘길 단어. 모든 활성 프로필의 검색어를 합친다.
+
+    search_companies 를 켠 프로필은 화이트리스트 회사명도 검색어로 쓴다.
+    잡코리아는 검색하지 않은 회사의 공고를 절대 돌려주지 않기 때문이다.
+    다만 90곳을 한 번에 검색하면 요청이 90번이라 연결이 끊기므로,
+    매 실행마다 몇 곳씩 옮겨가며 검색해 몇 시간에 걸쳐 전부 훑는다.
+    """
     out: list[str] = []
     for profile in config.active_profiles:
         for q in profile.effective_queries():
             if q not in out:
                 out.append(q)
+
+    offset = getattr(status, "query_offset", 0) if status is not None else 0
+    per_run = config.settings.company_queries_per_run
+    added = 0
+    for profile in config.active_profiles:
+        if not (profile.search_companies and profile.include_companies):
+            continue
+        for name in rotate(profile.include_companies, per_run, offset):
+            if name not in out:
+                out.append(name)
+                added += 1
+
+    if status is not None and added:
+        status.advance_queries(per_run)
+
     return tuple(out)
 
 
-def gather(config: Config, sources: dict, report: RunReport) -> dict[str, list[JobPosting]]:
+def gather(config: Config, sources: dict, report: RunReport, status=None) -> dict[str, list[JobPosting]]:
     """소스별로 공고를 모은다. 한 소스가 실패해도 나머지는 계속 진행한다."""
     needed = {name for profile in config.active_profiles for name in profile.sources}
-    queries = _queries_for(config)
+    queries = _queries_for(config, status)
 
     collected: dict[str, list[JobPosting]] = {}
     for name in sorted(needed):
@@ -173,7 +195,7 @@ def run(
     now=None,
 ) -> RunReport:
     report = RunReport(first_run=store.is_first_run, dry_run=dry_run)
-    collected = gather(config, sources, report)
+    collected = gather(config, sources, report, status)
 
     first_run = store.is_first_run
     limit = config.settings.first_run_limit if first_run else config.settings.max_notifications_per_run

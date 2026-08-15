@@ -55,6 +55,8 @@ class Profile:
     include_companies: tuple[str, ...]
     exclude_companies: tuple[str, ...]
     search_queries: tuple[str, ...]
+    # 켜면 include_companies 의 회사명도 잡코리아 검색어로 쓴다 (순환 검색)
+    search_companies: bool
     webhook_env: str
 
     def effective_queries(self) -> tuple[str, ...]:
@@ -74,6 +76,8 @@ class Settings:
     max_enrich_per_run: int = 40
     # 새 공고가 없어도 '살아있다'는 상태 메시지를 보낼 간격(시간). 0 이면 안 보냄.
     heartbeat_hours: float = 6.0
+    # 한 실행에서 잡코리아에 검색할 화이트리스트 회사 수 (나머지는 다음 실행에서)
+    company_queries_per_run: int = 8
 
 
 @dataclass(frozen=True)
@@ -212,6 +216,7 @@ def _parse_profile(raw: dict, index: int) -> Profile:
         include_companies=_as_str_tuple(raw.get("include_companies"), f"{where} 의 include_companies"),
         exclude_companies=_as_str_tuple(raw.get("exclude_companies"), f"{where} 의 exclude_companies"),
         search_queries=_as_str_tuple(raw.get("search_queries"), f"{where} 의 search_queries"),
+        search_companies=bool(raw.get("search_companies", False)),
         webhook_env=webhook_env,
     )
 
@@ -243,6 +248,9 @@ def load_config(path: str | os.PathLike) -> Config:
         max_pages=max(1, _as_int(s_raw.get("max_pages"), "settings.max_pages", 3)),
         max_enrich_per_run=_as_int(s_raw.get("max_enrich_per_run"), "settings.max_enrich_per_run", 40),
         heartbeat_hours=_as_float(s_raw.get("heartbeat_hours"), "settings.heartbeat_hours", 6.0),
+        company_queries_per_run=_as_int(
+            s_raw.get("company_queries_per_run"), "settings.company_queries_per_run", 8
+        ),
     )
 
     p_raw = raw.get("profiles")
