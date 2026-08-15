@@ -10,6 +10,7 @@ import argparse
 import logging
 import os
 import sys
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 from .config import Config, ConfigError, Profile, load_config
@@ -41,12 +42,28 @@ def load_dotenv(path: Path) -> None:
             os.environ[key] = value
 
 
-def setup_logging(verbose: bool) -> None:
+def setup_logging(verbose: bool, log_file: str | None = None) -> None:
+    """화면에 출력하고, log_file 이 있으면 파일에도 남긴다.
+
+    작업 스케줄러로 창 없이 돌릴 때는 화면 출력을 볼 수 없으므로
+    파일 로그가 유일한 확인 수단이 된다.
+    """
+    handlers: list[logging.Handler] = [logging.StreamHandler(sys.stdout)]
+
+    if log_file:
+        path = Path(log_file)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        # 로그가 무한히 커지지 않도록 1MB 씩 3개까지만 보관한다.
+        handlers.append(
+            RotatingFileHandler(path, maxBytes=1_000_000, backupCount=3, encoding="utf-8")
+        )
+
     logging.basicConfig(
         level=logging.DEBUG if verbose else logging.INFO,
         format="%(asctime)s  %(message)s",
-        datefmt="%H:%M:%S",
-        stream=sys.stdout,
+        datefmt="%Y-%m-%d %H:%M:%S",
+        handlers=handlers,
+        force=True,
     )
     logging.getLogger("urllib3").setLevel(logging.WARNING)
 
@@ -92,17 +109,18 @@ def print_preview(config: Config, sources: dict) -> None:
 
 
 def print_summary(report: RunReport) -> None:
-    print("\n" + "=" * 60)
+    """요약을 로거로 남긴다. 화면과 로그 파일 양쪽에 똑같이 기록된다."""
+    log.info("=" * 60)
     if report.first_run:
-        print("첫 실행입니다. 과거 공고가 쏟아지지 않도록 최신 일부만 보냈습니다.")
+        log.info("첫 실행입니다. 과거 공고가 쏟아지지 않도록 최신 일부만 보냈습니다.")
     for name, count in report.fetched_by_source.items():
-        print(f"  수집  {name:10s} {count:4d}건")
+        log.info("  수집  %-10s %4d건", name, count)
     for name, count in report.matched_by_profile.items():
         sent = report.sent_by_profile.get(name, 0)
-        print(f"  프로필 '{name}': 조건 일치 {count}건 / 새로 보낸 알림 {sent}건")
+        log.info("  프로필 '%s': 조건 일치 %d건 / 새로 보낸 알림 %d건", name, count, sent)
     for name, reason in report.failed_sources.items():
-        print(f"  [실패] {name}: {reason}")
-    print("=" * 60)
+        log.info("  [실패] %s: %s", name, reason)
+    log.info("=" * 60)
 
 
 def main(argv=None) -> int:
@@ -113,14 +131,21 @@ def main(argv=None) -> int:
         "--dry-run", action="store_true", help="디스코드로 보내지 않고 걸린 공고만 화면에 출력"
     )
     parser.add_argument("--verbose", action="store_true", help="자세한 로그 출력")
+    parser.add_argument(
+        "--log-file",
+        help="실행 기록을 남길 파일 경로. 작업 스케줄러처럼 창 없이 돌릴 때 사용합니다.",
+    )
     args = parser.parse_args(argv)
 
-    setup_logging(args.verbose)
+    setup_logging(args.verbose, args.log_file)
     load_dotenv(ROOT / ".env")
 
     try:
         config = load_config(args.config)
     except ConfigError as e:
+        # 작업 스케줄러로 창 없이 돌 때는 화면 출력을 볼 수 없으므로
+        # 로그 파일에도 반드시 남긴다.
+        log.error("[설정 오류] %s", e)
         print(f"\n[설정 오류] {e}\n", file=sys.stderr)
         return 2
 
@@ -142,6 +167,9 @@ def main(argv=None) -> int:
         notifier_factory = make_notifier_factory({})
         report = run(config, sources, notifier_factory, store)
     except ConfigError as e:
+        # 작업 스케줄러로 창 없이 돌 때는 화면 출력을 볼 수 없으므로
+        # 로그 파일에도 반드시 남긴다.
+        log.error("[설정 오류] %s", e)
         print(f"\n[설정 오류] {e}\n", file=sys.stderr)
         return 2
 
